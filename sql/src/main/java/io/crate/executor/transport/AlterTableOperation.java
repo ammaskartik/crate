@@ -28,10 +28,7 @@ import io.crate.Constants;
 import io.crate.action.FutureActionListener;
 import io.crate.action.sql.ResultReceiver;
 import io.crate.action.sql.SQLOperations;
-import io.crate.analyze.AddColumnAnalyzedStatement;
-import io.crate.analyze.AlterTableAnalyzedStatement;
-import io.crate.analyze.PartitionedTableParameterInfo;
-import io.crate.analyze.TableParameter;
+import io.crate.analyze.*;
 import io.crate.concurrent.CompletableFutures;
 import io.crate.concurrent.MultiBiConsumer;
 import io.crate.data.Row;
@@ -59,6 +56,7 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.XContentHelper;
 import org.elasticsearch.common.xcontent.XContentParser;
+import org.jboss.netty.channel.CompleteChannelFuture;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -104,6 +102,18 @@ public class AlterTableOperation {
         } else {
             addColumnToTable(analysis, result);
         }
+        return result;
+    }
+
+    public CompletableFuture<Long> executeAlterTableOpenClose(final AlterTableOpenCloseAnalyzedStatement analysis) {
+        final CompletableFuture<Long> result = new CompletableFuture<>();
+
+        if (analysis.openTable()) {
+            openTable(analysis, result);
+        } else {
+            closeTable(analysis, result);
+        }
+
         return result;
     }
 
@@ -312,6 +322,20 @@ public class AlterTableOperation {
         }
 
         applyMultiFutureCallback(result, results);
+    }
+
+    private void openTable(AlterTableOpenCloseAnalyzedStatement analysis, final CompletableFuture<?> result) {
+        boolean updateTemplate = analysis.table().isPartitioned();
+        List<CompletableFuture<Long>> results = new ArrayList<>(2);
+        final boolean shouldCloseTable = !analysis.openTable();
+
+        
+
+
+    }
+
+    private void closeTable(AlterTableOpenCloseAnalyzedStatement analysis, final CompletableFuture<?> result) {
+        // TODO: Close the table
     }
 
     private void applyMultiFutureCallback(final CompletableFuture<?> result, List<CompletableFuture<Long>> futures) {
