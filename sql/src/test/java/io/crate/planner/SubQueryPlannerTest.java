@@ -35,6 +35,7 @@ import org.junit.Test;
 
 import java.util.List;
 
+import static io.crate.testing.TestingHelpers.isSQL;
 import static org.hamcrest.Matchers.instanceOf;
 
 
@@ -51,15 +52,74 @@ public class SubQueryPlannerTest extends CrateDummyClusterServiceUnitTest {
     public void testNestedSimpleSelectUsesFetch() throws Exception {
         QueryThenFetch qtf = e.plan(
             "select x, i from (select x, i from t1 order by x asc limit 10) ti order by x desc limit 3");
-        PlanWithFetchDescription planWithFetchDescription = (PlanWithFetchDescription) qtf.subPlan();
-        Collect collect = (Collect) planWithFetchDescription.subPlan();
+        PlanWithFetchDescription subPlan = (PlanWithFetchDescription) qtf.subPlan();
+        Collect collect = (Collect) subPlan.subPlan();
         assertThat(collect.collectPhase().projections(), Matchers.contains(
             instanceOf(TopNProjection.class),
             instanceOf(TopNProjection.class),
-            // TODO: We can optimize this to delay fetch until after the OrderedTopNProjection
+            instanceOf(OrderedTopNProjection.class),
             instanceOf(FetchProjection.class),
-            instanceOf(OrderedTopNProjection.class)
+            instanceOf(EvalProjection.class)
         ));
+    }
+
+    @Test
+    public void testNestedSimpleSelectWithEarlyFetchBecauseOfWhereClause() throws Exception {
+        QueryThenFetch qtf = e.plan(
+            "select x, i from (select x, i from t1 order by x asc limit 10) ti where ti.i = 10 order by x desc limit 3");
+        PlanWithFetchDescription subPlan = (PlanWithFetchDescription) qtf.subPlan();
+        Collect collect = (Collect) subPlan.subPlan();
+        assertThat(collect.collectPhase().projections(), Matchers.contains(
+            instanceOf(TopNProjection.class),
+            instanceOf(TopNProjection.class),
+            instanceOf(OrderedTopNProjection.class),
+            instanceOf(FetchProjection.class),
+            instanceOf(FilterProjection.class),
+            instanceOf(EvalProjection.class)
+        ));
+    }
+
+    @Test
+    public void testTwoLevelFetchPropagation() throws Exception {
+        QueryThenFetch qtf = e.plan("select x, i, a from (" +
+                                    "    select a, i, x from (" +
+                                    "        select x, i, a from t1 order by x asc limit 100" +
+                                    "    ) tt " +
+                                    "    order by tt.x desc limit 50" +
+                                    ") ttt " +
+                                    "order by ttt.x asc limit 10");
+        PlanWithFetchDescription subPlan = (PlanWithFetchDescription) qtf.subPlan();
+        subPlan = (PlanWithFetchDescription) subPlan.subPlan();
+        Collect collect = (Collect) subPlan.subPlan();
+        assertThat(collect.collectPhase().projections(), Matchers.contains(
+            instanceOf(TopNProjection.class),
+            instanceOf(TopNProjection.class),
+            instanceOf(OrderedTopNProjection.class),
+            instanceOf(OrderedTopNProjection.class),
+            instanceOf(FetchProjection.class),
+            instanceOf(EvalProjection.class)
+        ));
+    }
+
+    @Test
+    public void testSimpleSubSelectWithLateFetchWhereClauseMatchesQueryColumn() throws Exception {
+        QueryThenFetch qtf = e.plan(
+            "select xx, i from (select x + x as xx, i from t1 order by x asc limit 10) ti " +
+            "where ti.xx = 10 order by xx desc limit 3");
+        PlanWithFetchDescription subPlan = (PlanWithFetchDescription) qtf.subPlan();
+        Collect collect = (Collect) subPlan.subPlan();
+        List<Projection> projections = collect.collectPhase().projections();
+        assertThat(projections, Matchers.contains(
+            instanceOf(TopNProjection.class),
+            instanceOf(TopNProjection.class),
+            instanceOf(FilterProjection.class),
+            instanceOf(OrderedTopNProjection.class),
+            instanceOf(FetchProjection.class),
+            instanceOf(EvalProjection.class)
+        ));
+        FilterProjection filterProjection = (FilterProjection) projections.get(2);
+        // filter is before fetch; preFetchOutputs: [_fetchId, x]
+        assertThat(filterProjection.query(), isSQL("(add(INPUT(1), INPUT(1)) = 10)"));
     }
 
     @Test
@@ -68,8 +128,8 @@ public class SubQueryPlannerTest extends CrateDummyClusterServiceUnitTest {
                                     "   (select x, i from t1 order by x asc limit 10) ti " +
                                     "where ti.x = 10 " +
                                     "order by x desc limit 3");
-        PlanWithFetchDescription planWithFetchDescription = (PlanWithFetchDescription) qtf.subPlan();
-        Collect collect = (Collect) planWithFetchDescription.subPlan();
+        PlanWithFetchDescription subPlan = (PlanWithFetchDescription) qtf.subPlan();
+        Collect collect = (Collect) subPlan.subPlan();
         List<Projection> projections = collect.collectPhase().projections();
         assertThat(projections, Matchers.hasItem(instanceOf(FilterProjection.class)));
     }

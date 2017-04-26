@@ -32,6 +32,7 @@ package io.crate.planner.consumer;
 @FunctionalInterface
 public interface FetchDecider {
 
+    // TODO: could probably make an enum with 3 entries because finalizeFetch=false implies tryFetchRewrite=true
     FetchDecider NEVER = () -> false;
     FetchDecider ALWAYS = () -> true;
     FetchDecider NO_FINALIZE = new FetchDecider() {
