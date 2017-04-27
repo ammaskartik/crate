@@ -184,7 +184,8 @@ public class DocIndexMetaData {
     }
 
     public static boolean getClosed(Map<String, Object> mappingMap) {
-        return getNested(getNested(mappingMap, "_meta", null), SETTING_CLOSED, null);
+        return false;
+        //return getNested(getNested(mappingMap, "_meta", null), SETTING_CLOSED, null);
     }
 
     @SuppressWarnings("unchecked")
@@ -622,7 +623,7 @@ public class DocIndexMetaData {
     }
 
     boolean closed() {
-        return closed(mappingMap);
+        return getClosed(mappingMap);
     }
 
     /**

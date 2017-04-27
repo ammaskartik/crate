@@ -218,6 +218,11 @@ public class BlobTableInfo implements TableInfo, ShardedTable, StoredTable {
         return routingHashFunction;
     }
 
+    @Override
+    public boolean closed() {
+        return closed;
+    }
+
     @Nullable
     @Override
     public Version versionCreated() {

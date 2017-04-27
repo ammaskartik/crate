@@ -329,9 +329,7 @@ public class AlterTableOperation {
         List<CompletableFuture<Long>> results = new ArrayList<>(2);
         final boolean shouldCloseTable = !analysis.openTable();
 
-        
-
-
+        //updateTemplate();
     }
 
     private void closeTable(AlterTableOpenCloseAnalyzedStatement analysis, final CompletableFuture<?> result) {
