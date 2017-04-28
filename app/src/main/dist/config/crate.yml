@@ -864,3 +864,14 @@
 
 #psql.enabled: true
 #psql.port: 5432
+
+auth:
+  host_based:
+    "1":
+      user: user_a
+      address: 192.168.0.11
+      method: auth
+    "b":
+      user: user_a
+      address: 192.168.0.12
+      method: auth

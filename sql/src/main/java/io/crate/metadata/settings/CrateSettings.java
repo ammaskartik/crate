@@ -26,6 +26,7 @@ import com.google.common.base.Joiner;
 import io.crate.breaker.CrateCircuitBreakerService;
 import io.crate.cluster.gracefulstop.DecommissioningService;
 import io.crate.metadata.ReferenceImplementation;
+import io.crate.operation.auth.AuthenticationService;
 import io.crate.operation.collect.stats.JobsLogService;
 import io.crate.operation.reference.NestedObjectExpression;
 import io.crate.operation.udf.UserDefinedFunctionService;
@@ -104,7 +105,13 @@ public class CrateSettings implements ClusterStateListener {
 
             // ENTERPRISE
             SharedSettings.ENTERPRISE_LICENSE_SETTING,
-            SharedSettings.LICENSE_IDENT_SETTING
+            SharedSettings.LICENSE_IDENT_SETTING,
+
+            // AUTHENTICATION
+            AuthenticationService.AUTH_HOST_BASED_SETTING,
+            AuthenticationService.AUTH_HOST_BASED_SETTING_USER,
+            AuthenticationService.AUTH_HOST_BASED_SETTING_ADDRESS,
+            AuthenticationService.AUTH_HOST_BASED_SETTING_METHOD
 
         ));
 

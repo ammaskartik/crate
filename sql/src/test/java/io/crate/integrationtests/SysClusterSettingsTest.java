@@ -23,6 +23,7 @@ package io.crate.integrationtests;
 
 import com.google.common.base.Splitter;
 import io.crate.breaker.CrateCircuitBreakerService;
+import io.crate.operation.auth.AuthenticationService;
 import io.crate.operation.collect.stats.JobsLogService;
 import io.crate.operation.udf.UserDefinedFunctionService;
 import io.crate.settings.CrateSetting;
@@ -183,6 +184,14 @@ public class SysClusterSettingsTest extends SQLTransportIntegrationTest {
         execute("select settings from sys.cluster");
         assertSettingsDefault(SharedSettings.ENTERPRISE_LICENSE_SETTING);
     }
+
+
+    @Test
+    public void testDefaultHBASetting() {
+        execute("select settings from sys.cluster");
+        assertSettingsDefault(AuthenticationService.AUTH_HOST_BASED_SETTING);
+    }
+
 
     @Test
     public void testDefaultLicenseIdentSetting() {
