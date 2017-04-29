@@ -25,6 +25,9 @@ package io.crate.protocols.postgres;
 import io.crate.action.sql.Option;
 import io.crate.action.sql.SQLOperations;
 import io.crate.executor.Executor;
+import io.crate.operation.auth.Authentication;
+import io.crate.operation.auth.AuthenticationMethod;
+import io.crate.operation.auth.AuthenticationProvider;
 import io.crate.operation.collect.stats.JobsLogs;
 import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
 import io.crate.testing.SQLExecutor;
@@ -51,6 +54,19 @@ public class ConnectionContextTest extends CrateDummyClusterServiceUnitTest {
     private SQLOperations sqlOperations;
     private List<SQLOperations.Session> sessions = new ArrayList<>();
 
+    private final Authentication authService = new Authentication() {
+        @Override
+        public boolean enabled() {
+            return false;
+        }
+
+        @Nullable
+        @Override
+        public AuthenticationMethod resolveAuthenticationType(String user, String address) {
+            return null;
+        }
+    };
+
     @Before
     public void prepare() {
         SQLExecutor e = SQLExecutor.builder(clusterService).build();
@@ -73,7 +89,7 @@ public class ConnectionContextTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testHandleEmptySimpleQuery() throws Exception {
-        ConnectionContext ctx = new ConnectionContext(mock(SQLOperations.class));
+        ConnectionContext ctx = new ConnectionContext(mock(SQLOperations.class), authService);
 
         ChannelBuffer channelBuffer = ChannelBuffers.dynamicBuffer();
         Messages.writeCString(channelBuffer, ";".getBytes(StandardCharsets.UTF_8));
@@ -96,7 +112,7 @@ public class ConnectionContextTest extends CrateDummyClusterServiceUnitTest {
         SQLOperations sqlOperations = mock(SQLOperations.class);
         SQLOperations.Session session = mock(SQLOperations.Session.class);
         when(sqlOperations.createSession(any(Properties.class))).thenReturn(session);
-        ConnectionContext ctx = new ConnectionContext(sqlOperations);
+        ConnectionContext ctx = new ConnectionContext(sqlOperations, authService);
         DecoderEmbedder<ChannelBuffer> e = new DecoderEmbedder<>(ctx.decoder, ctx.handler);
 
         ChannelBuffer buffer = ChannelBuffers.dynamicBuffer();
@@ -110,7 +126,7 @@ public class ConnectionContextTest extends CrateDummyClusterServiceUnitTest {
 
     @Test
     public void testBindMessageCanBeReadIfTypeForParamsIsUnknown() throws Exception {
-        ConnectionContext ctx = new ConnectionContext(sqlOperations);
+        ConnectionContext ctx = new ConnectionContext(sqlOperations, authService);
         DecoderEmbedder<ChannelBuffer> e = new DecoderEmbedder<>(ctx.decoder, ctx.handler);
 
         ChannelBuffer buffer = ChannelBuffers.dynamicBuffer();

@@ -55,12 +55,12 @@ import java.util.Locale;
  * <p>
  * See https://www.postgresql.org/docs/9.2/static/protocol-message-formats.html
  */
-class Messages {
+public class Messages {
 
     private final static Logger LOGGER = Loggers.getLogger(Messages.class);
 
 
-    static void sendAuthenticationOK(Channel channel) {
+    public static void sendAuthenticationOK(Channel channel) {
         ChannelBuffer buffer = ChannelBuffers.buffer(9);
         buffer.writeByte('R');
         buffer.writeInt(8); // size excluding char
@@ -196,7 +196,7 @@ class Messages {
      * <p>
      * See https://www.postgresql.org/docs/9.2/static/protocol-error-fields.html for a list of error codes
      */
-    static void sendErrorResponse(Channel channel, Throwable throwable) {
+    public static void sendErrorResponse(Channel channel, Throwable throwable) {
         final String message = SQLExceptions.messageOf(throwable);
         byte[] msg = message.getBytes(StandardCharsets.UTF_8);
         byte[] severity = "ERROR".getBytes(StandardCharsets.UTF_8);

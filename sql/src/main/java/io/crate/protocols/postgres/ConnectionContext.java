@@ -28,11 +28,14 @@ import io.crate.action.sql.ResultReceiver;
 import io.crate.action.sql.SQLOperations;
 import io.crate.analyze.symbol.Field;
 import io.crate.analyze.symbol.Symbols;
+import io.crate.operation.auth.Authentication;
+import io.crate.operation.auth.AuthenticationMethod;
 import io.crate.protocols.postgres.types.PGType;
 import io.crate.protocols.postgres.types.PGTypes;
 import io.crate.types.DataType;
 import org.apache.logging.log4j.Logger;
 import org.elasticsearch.common.logging.Loggers;
+import org.elasticsearch.common.settings.Settings;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.*;
@@ -144,11 +147,12 @@ import static io.crate.protocols.postgres.FormatCodes.getFormatCode;
 
 class ConnectionContext {
 
-    private final static Logger LOGGER = Loggers.getLogger(ConnectionContext.class);
+    private static final Logger LOGGER = Loggers.getLogger(ConnectionContext.class);
 
     final MessageDecoder decoder;
     final MessageHandler handler;
     private final SQLOperations sqlOperations;
+    private final Authentication authService;
 
     private int msgLength;
     private byte msgType;
@@ -165,8 +169,9 @@ class ConnectionContext {
 
     private State state = STARTUP_HEADER;
 
-    ConnectionContext(SQLOperations sqlOperations) {
+    ConnectionContext(SQLOperations sqlOperations, Authentication authService) {
         this.sqlOperations = sqlOperations;
+        this.authService = authService;
         decoder = new MessageDecoder();
         handler = new MessageHandler();
     }
@@ -344,8 +349,21 @@ class ConnectionContext {
 
     private void handleStartupBody(ChannelBuffer buffer, Channel channel) {
         session = readStartupMessage(buffer);
-        Messages.sendAuthenticationOK(channel);
+        if (authService != null && authService.enabled()) {
+            AuthenticationMethod authMethod = authService.resolveAuthenticationType("crate", "127.0.0.1");
+            if (authMethod == null) {
+                Messages.sendErrorResponse(channel, new Throwable("AuthenticationMethod not valid"));
+            } else {
+                authMethod.pgAuthenticate(channel, session.sessionContext(), Settings.EMPTY);
+                prepareReadyForQuery(channel);
+            }
+        } else {
+            Messages.sendAuthenticationOK(channel);
+            prepareReadyForQuery(channel);
+        }
+    }
 
+    private void prepareReadyForQuery(Channel channel) {
         Messages.sendParameterStatus(channel, "server_version", "9.5.0");
         Messages.sendParameterStatus(channel, "server_encoding", "UTF8");
         Messages.sendParameterStatus(channel, "client_encoding", "UTF8");

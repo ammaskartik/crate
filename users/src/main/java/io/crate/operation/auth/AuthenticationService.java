@@ -41,6 +41,7 @@ public class AuthenticationService implements Authentication {
     private Map<String, Map<String, String>> hbaConf;
 
     AuthenticationService() {
+        registerAuthMethod(new TrustAuthentication());
     }
 
     /*

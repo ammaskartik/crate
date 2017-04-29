@@ -181,6 +181,10 @@ public class SQLOperations {
             this.sessionContext = sessionContext;
         }
 
+        public SessionContext sessionContext() {
+            return sessionContext;
+        }
+
         private Portal getOrCreatePortal(String portalName) {
             Portal portal = portals.get(portalName);
             if (portal == null) {
